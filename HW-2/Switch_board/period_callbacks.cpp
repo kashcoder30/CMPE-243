@@ -49,28 +49,18 @@ const uint32_t PERIOD_TASKS_STACK_SIZE_BYTES = (512 * 4);
 const uint32_t PERIOD_MONITOR_TASK_STACK_SIZE_BYTES = (512 * 3);
 
 SemaphoreHandle_t sem_handler = 0;
-const int32_t bounce_count = 1;
-int32_t cnt = 1;
 GPIO *p2_0_ptr;
-bool flag = false;
+bool flag_debounce = false;
 bool flag_500ms = false;
 uint32_t local_count;
 
 void onP2_1_event()
 {
-#if 0
-    //Code to avoid bounce
-    if (cnt > bounce_count)
-    {
+    // Code to avoid switch debouncing
+    if (flag_debounce) {
         return;
     }
-    cnt += 1;
-#else
-    if (flag) {
-        return;
-    }
-    flag = true;
-#endif
+    flag_debounce = true;
     xSemaphoreGive(sem_handler);
 }
 
@@ -79,9 +69,8 @@ bool period_init(void)
 {
     vSemaphoreCreateBinary(sem_handler);
     p2_0_ptr = new GPIO(P2_0);
-    p2_0_ptr->setAsOutput();
-    flag_500ms = false;
-    eint3_enable_port2(1, eint_falling_edge, onP2_1_event);
+    p2_0_ptr->setAsOutput(); // P2.0 enabled as output port
+    eint3_enable_port2(1, eint_falling_edge, onP2_1_event); // P2.1 enabled as interrupt port for switch
     return true; // Must return true upon success
 }
 
@@ -106,12 +95,10 @@ void period_1Hz(uint32_t count)
 // Will be called every 100ms
 void period_10Hz(uint32_t count)
 {
-#if 1
     if (xSemaphoreTake(sem_handler, 0))
     {
         local_count = count + 5;
         flag_500ms = true;
-        flag = false;
     }
 
     if (flag_500ms)
@@ -119,6 +106,7 @@ void period_10Hz(uint32_t count)
         if (count < local_count) {
             p2_0_ptr->setHigh();
         } else {
+            flag_debounce = false;
             flag_500ms = false;
             p2_0_ptr->setLow();
         }
@@ -126,21 +114,6 @@ void period_10Hz(uint32_t count)
     else {
         p2_0_ptr->setLow();
     }
-#endif
-#if 0
-    if (p2_1_event)
-    {
-        p2_1_event = false;
-        cnt = 1;
-        flag = false;
-        p2_0_ptr->setHigh();
-    }
-    else
-    {
-        p2_0_ptr->setLow();
-    }
-//    LE.toggle(2);
-#endif
 }
 
 // Will be called every 10ms

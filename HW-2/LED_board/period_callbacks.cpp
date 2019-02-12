@@ -46,13 +46,7 @@ const uint32_t PERIOD_TASKS_STACK_SIZE_BYTES = (512 * 4);
  */
 const uint32_t PERIOD_MONITOR_TASK_STACK_SIZE_BYTES = (512 * 3);
 
-bool p2_0_event = false;
-GPIO *p2_3_ptr, *p2_0_ptr;
-
-void onP2_0_event()
-{
-    p2_0_event = true;
-}
+GPIO *p2_0_ptr, *p2_3_ptr;
 
 /// Called once before the RTOS is started, this is a good place to initialize things once
 bool period_init(void)
@@ -85,7 +79,6 @@ void period_1Hz(uint32_t count)
 // Will be called every 100ms
 void period_10Hz(uint32_t count)
 {
-
     if (p2_0_ptr->read()) {
         p2_3_ptr->setHigh();
     } else {
